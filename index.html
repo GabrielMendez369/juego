@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>100 Católicos Dijeron - 4 Preguntas (Pantalla Final)</title>
+  <style>
+    /* ======= FONDO CON IMAGEN ======= */
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      /* Ajusta el nombre de tu imagen si difiere */
+      background: url("fondo.png") no-repeat center center fixed;
+      background-size: cover;
+    }
+    h1, h2, h3, p {
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    /* ====== CONTENEDOR PRINCIPAL ====== */
+    #game-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 8px;
+    }
+    /* Marcadores de equipos */
+    #team-scores {
+      text-align: center;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #fff;
+    }
+    /* Pregunta y respuestas */
+    #question {
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 20px 0 10px;
+      font-weight: bold;
+    }
+    #answers-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .answer-slot {
+      width: 80%;
+      max-width: 500px;
+      background-color: #eeeeee;
+      margin: 5px 0;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      border-radius: 4px;
+      font-size: 1rem;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+    }
+    .answer-slot.revealed {
+      background-color: #fff59d;
+      font-weight: bold;
+    }
+    .answer-text, .answer-points {
+      visibility: hidden;
+    }
+    .answer-text.revealed, .answer-points.revealed {
+      visibility: visible;
+    }
+    /* Sección de adivinar (ronda normal) */
+    #guess-section {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #guess {
+      width: 200px;
+      padding: 8px;
+      margin-right: 5px;
+      border-radius: 4px;
+      border: 2px solid #ccc;
+      box-shadow: inset 1px 1px 3px rgba(0,0,0,0.2);
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      background-color: #2196f3;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+    }
+    button:hover {
+      background-color: #1976d2;
+    }
+    /* Face-Off (elección de equipo) */
+    #faceoff-choice {
+      text-align: center;
+      margin: 10px 0;
+    }
+    #faceoff-choice label {
+      margin: 0 10px;
+      font-weight: bold;
+      color: #fff;
+    }
+    /* Feedback y strikes */
+    #feedback {
+      text-align: center;
+      min-height: 1.5em;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .correct {
+      color: limegreen;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    .incorrect {
+      color: red;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    #strikes-info {
+      text-align: center;
+      margin-top: 5px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+    }
+    /* ===== PANTALLA FINAL ===== */
+    #final-screen {
+      display: none; /* Oculto al inicio, se muestra al finalizar */
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      text-align: center;
+      background-color: rgba(0,0,0,0.4);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- CONTENEDOR DEL JUEGO -->
+<div id="game-container">
+  <h1>¡100 Católicos Dijeron!</h1>
+
+  <div id="team-scores">
+    Equipo 1: <span id="score-team1">0</span> |
+    Equipo 2: <span id="score-team2">0</span>
+  </div>
+
+  <div id="faceoff-choice">
+    <p>¿Qué equipo tira primero en esta pregunta?</p>
+    <label><input type="radio" name="faceOffTeam" value="1" checked> Equipo 1</label>
+    <label><input type="radio" name="faceOffTeam" value="2"> Equipo 2</label>
+    <button id="faceoff-start-btn">Iniciar Face-Off</button>
+  </div>
+
+  <div id="question"></div>
+  <div id="answers-container"></div>
+
+  <div id="guess-section">
+    <input type="text" id="guess" placeholder="Tu respuesta...">
+    <button id="guess-button">Adivinar</button>
+    <button id="steal-button" style="display: none;">Robar</button>
+    <button id="next-button" style="display: none;"></button>
+  </div>
+
+  <div id="feedback"></div>
+  <div id="strikes-info"></div>
+</div>
+
+<!-- PANTALLA FINAL (APARTADO) -->
+<div id="final-screen">
+  <!-- Aquí se mostrará el resultado final (puntajes y ganador) -->
+</div>
+
+<script>
+/* ===================== PREGUNTAS (4) ========================= */
+const questions = [
+  {
+    question: "Menciona algo que un católico haría antes de ir a misa:",
+    answers: [
+      { text: "Rezar", points: 30 },
+      { text: "Persignarse", points: 20 },
+      { text: "Leer la Biblia", points: 15 },
+      { text: "Vestirse formal", points: 10 }
+    ]
+  },
+  {
+    question: "Menciona una festividad muy importante para los católicos:",
+    answers: [
+      { text: "Semana Santa", points: 25 },
+      { text: "Navidad", points: 20 },
+      { text: "Pascua", points: 15 },
+      { text: "Día de Todos los Santos", points: 10 }
+    ]
+  },
+  {
+    question: "¿Qué objeto encuentras de forma indispensable en una iglesia católica?",
+    answers: [
+      { text: "Crucifijo", points: 30 },
+      { text: "Agua bendita", points: 20 },
+      { text: "Velas", points: 15 },
+      { text: "Banco de oraciones", points: 10 }
+    ]
+  },
+  {
+    question: "Menciona un sacramento importante para los católicos:",
+    answers: [
+      { text: "Bautismo", points: 25 },
+      { text: "Comunión", points: 20 },
+      { text: "Confirmación", points: 15 },
+      { text: "Matrimonio", points: 10 }
+    ]
+  }
+];
+
+// ============ VARIABLES GLOBALES ============
+let currentQuestionIndex = 0;
+let scoreTeam1 = 0;
+let scoreTeam2 = 0;
+
+let controllingTeam = 1;
+let strikes = 0;
+let roundPoints = 0;
+let isStealPhase = false;
+
+// ============ REFERENCIAS DOM ============
+const questionElement = document.getElementById("question");
+const answersContainer = document.getElementById("answers-container");
+const guessInput = document.getElementById("guess");
+const guessButton = document.getElementById("guess-button");
+const stealButton = document.getElementById("steal-button");
+const nextButton = document.getElementById("next-button");
+const feedbackDiv = document.getElementById("feedback");
+const strikesInfo = document.getElementById("strikes-info");
+
+const faceoffChoiceDiv = document.getElementById("faceoff-choice");
+const faceoffStartBtn = document.getElementById("faceoff-start-btn");
+
+const scoreTeam1Span = document.getElementById("score-team1");
+const scoreTeam2Span = document.getElementById("score-team2");
+
+const gameContainer = document.getElementById("game-container");
+const finalScreen = document.getElementById("final-screen");
+
+/* Arrancamos con la primera pregunta */
+loadQuestion(currentQuestionIndex);
+
+/* ======================================================
+   1) CARGAR LA PREGUNTA + MOSTRAR FACE-OFF
+   ====================================================== */
+function loadQuestion(index) {
+  if (index >= questions.length) {
+    endGame();
+    return;
+  }
+
+  feedbackDiv.textContent = "";
+  strikesInfo.textContent = "";
+
+  strikes = 0;
+  roundPoints = 0;
+  isStealPhase = false;
+  controllingTeam = 0;
+
+  const questionObj = questions[index];
+  questionElement.textContent = questionObj.question;
+  answersContainer.innerHTML = "";
+
+  questionObj.answers.forEach(ans => {
+    const slot = document.createElement("div");
+    slot.classList.add("answer-slot");
+
+    const ansText = document.createElement("span");
+    ansText.classList.add("answer-text");
+    ansText.textContent = ans.text;
+
+    const ansPoints = document.createElement("span");
+    ansPoints.classList.add("answer-points");
+    ansPoints.textContent = ans.points;
+
+    slot.appendChild(ansText);
+    slot.appendChild(ansPoints);
+    answersContainer.appendChild(slot);
+  });
+
+  faceoffChoiceDiv.style.display = "block";
+
+  if (currentQuestionIndex < questions.length - 1) {
+    nextButton.textContent = "Siguiente Pregunta";
+  } else {
+    nextButton.textContent = "Finalizar Juego";
+  }
+
+  guessButton.style.display = "inline-block";
+  stealButton.style.display = "none";
+  nextButton.style.display = "none";
+  guessInput.value = "";
+  guessInput.disabled = false;
+}
+
+/* ============================================================
+   2) FACE-OFF
+   ============================================================ */
+faceoffStartBtn.addEventListener("click", () => {
+  const selectedRadio = document.querySelector("input[name='faceOffTeam']:checked");
+  let firstTeam = selectedRadio ? parseInt(selectedRadio.value) : 1;
+  let secondTeam = (firstTeam === 1) ? 2 : 1;
+
+  faceoffChoiceDiv.style.display = "none";
+
+  const firstAnswer = prompt(`Equipo ${firstTeam}, ingresa tu respuesta de Face-Off:`);
+  if (firstAnswer) {
+    if (tryFaceOffAnswer(firstAnswer.trim().toLowerCase(), firstTeam)) {
+      return;
+    }
+  }
+  alert(`Equipo ${firstTeam} falló. Turno para Equipo ${secondTeam}.`);
+
+  const secondAnswer = prompt(`Equipo ${secondTeam}, ingresa tu respuesta de Face-Off:`);
+  if (secondAnswer) {
+    if (tryFaceOffAnswer(secondAnswer.trim().toLowerCase(), secondTeam)) {
+      return;
+    }
+  }
+  alert(`Equipo ${secondTeam} también falló. Control para Equipo ${firstTeam}.`);
+  controllingTeam = firstTeam;
+  feedbackDiv.textContent = `Nadie acertó. El control es del Equipo ${controllingTeam}.`;
+  feedbackDiv.className = "incorrect";
+  strikesInfo.textContent = `Errores del Equipo ${controllingTeam}: 0/3`;
+});
+
+function tryFaceOffAnswer(ans, team) {
+  let found = false;
+  const questionObj = questions[currentQuestionIndex];
+
+  Array.from(answersContainer.children).forEach(slot => {
+    const ansText = slot.querySelector(".answer-text");
+    const ansPoints = slot.querySelector(".answer-points");
+
+    if (ans === ansText.textContent.toLowerCase()) {
+      if (!ansText.classList.contains("revealed")) {
+        found = true;
+        ansText.classList.add("revealed");
+        ansPoints.classList.add("revealed");
+        slot.classList.add("revealed");
+
+        roundPoints += parseInt(ansPoints.textContent);
+        controllingTeam = team;
+
+        feedbackDiv.textContent = `¡Equipo ${team} acierta la Face-Off! Ahora controla la ronda.`;
+        feedbackDiv.className = "correct";
+        strikesInfo.textContent = `Errores del Equipo ${controllingTeam}: 0/3`;
+      }
+    }
+  });
+  return found;
+}
+
+/* ============================================================
+   3) RONDA NORMAL: 3 ERRORES + ROBO
+   ============================================================ */
+guessButton.addEventListener("click", () => {
+  if (!controllingTeam) {
+    feedbackDiv.textContent = "Primero realiza la Face-Off para definir el control.";
+    feedbackDiv.className = "incorrect";
+    return;
+  }
+
+  const userAnswer = guessInput.value.trim().toLowerCase();
+  if (!userAnswer) {
+    feedbackDiv.textContent = "¡Escribe una respuesta!";
+    feedbackDiv.className = "incorrect";
+    return;
+  }
+
+  let found = false;
+  Array.from(answersContainer.children).forEach(slot => {
+    const ansText = slot.querySelector(".answer-text");
+    const ansPoints = slot.querySelector(".answer-points");
+
+    if (ansText.textContent.toLowerCase() === userAnswer) {
+      if (!ansText.classList.contains("revealed")) {
+        found = true;
+        ansText.classList.add("revealed");
+        ansPoints.classList.add("revealed");
+        slot.classList.add("revealed");
+
+        const pts = parseInt(ansPoints.textContent);
+        roundPoints += pts;
+
+        feedbackDiv.textContent = `¡Correcto! +${pts} puntos (Equipo ${controllingTeam}).`;
+        feedbackDiv.className = "correct";
+      } else {
+        found = true;
+        feedbackDiv.textContent = "¡Esa respuesta ya fue revelada!";
+        feedbackDiv.className = "incorrect";
+      }
+    }
+  });
+
+  if (!found) {
+    strikes++;
+    feedbackDiv.textContent = `¡Error! Intento fallido #${strikes} (Equipo ${controllingTeam})`;
+    feedbackDiv.className = "incorrect";
+    strikesInfo.textContent = `Errores del Equipo ${controllingTeam}: ${strikes}/3`;
+
+    if (strikes >= 3) {
+      feedbackDiv.textContent = `¡3 Errores! El Equipo ${(controllingTeam === 1 ? 2 : 1)} puede robar.`;
+      goToStealPhase();
+    }
+  }
+
+  // Revisamos si todas están reveladas
+  const allRevealed = Array.from(answersContainer.children).every(s =>
+    s.classList.contains("revealed")
+  );
+  if (allRevealed && strikes < 3) {
+    endRound(false);
+  }
+
+  guessInput.value = "";
+  guessInput.focus();
+});
+
+/* ============================================================
+   4) FASE DE ROBO
+   ============================================================ */
+function goToStealPhase() {
+  isStealPhase = true;
+  guessButton.style.display = "none";
+  guessInput.disabled = true;
+  stealButton.style.display = "inline-block";
+}
+
+stealButton.addEventListener("click", () => {
+  const otherTeam = (controllingTeam === 1) ? 2 : 1;
+  const stealAnswer = prompt(`Equipo ${otherTeam}, intenta robar. Escribe tu respuesta:`);
+
+  if (!stealAnswer) {
+    feedbackDiv.textContent = "No se ingresó respuesta. Robo fallido.";
+    feedbackDiv.className = "incorrect";
+    endRound(false);
+    return;
+  }
+
+  let found = false;
+  const stealLower = stealAnswer.trim().toLowerCase();
+  Array.from(answersContainer.children).forEach(slot => {
+    const ansText = slot.querySelector(".answer-text");
+    if (!ansText.classList.contains("revealed") &&
+        ansText.textContent.toLowerCase() === stealLower) {
+      found = true;
+      ansText.classList.add("revealed");
+      slot.querySelector(".answer-points").classList.add("revealed");
+      slot.classList.add("revealed");
+    }
+  });
+
+  if (found) {
+    // Robo exitoso
+    if (otherTeam === 1) {
+      scoreTeam1 += roundPoints;
+      scoreTeam1Span.textContent = scoreTeam1;
+    } else {
+      scoreTeam2 += roundPoints;
+      scoreTeam2Span.textContent = scoreTeam2;
+    }
+    feedbackDiv.textContent = `¡Robo exitoso! El Equipo ${otherTeam} gana ${roundPoints} puntos.`;
+    feedbackDiv.className = "correct";
+    endRound(true);
+  } else {
+    // Robo fallido
+    feedbackDiv.textContent = `¡Robo fallido! El Equipo ${controllingTeam} conserva sus ${roundPoints} puntos.`;
+    feedbackDiv.className = "incorrect";
+    endRound(false);
+  }
+});
+
+/* ============================================================
+   5) FIN DE RONDA
+   ============================================================ */
+function endRound(stolen) {
+  // Si no hubo robo exitoso, sumamos los puntos al equipo controlador
+  if (!isStealPhase || (isStealPhase && !stolen)) {
+    if (controllingTeam === 1) {
+      scoreTeam1 += roundPoints;
+      scoreTeam1Span.textContent = scoreTeam1;
+    } else {
+      scoreTeam2 += roundPoints;
+      scoreTeam2Span.textContent = scoreTeam2;
+    }
+  }
+
+  stealButton.style.display = "none";
+  guessButton.style.display = "none";
+  guessInput.disabled = true;
+  nextButton.style.display = "inline-block";
+}
+
+/* ============================================================
+   6) SIGUIENTE PREGUNTA (o Finalizar Juego)
+   ============================================================ */
+nextButton.addEventListener("click", () => {
+  // Si no es la última
+  if (currentQuestionIndex < questions.length - 1) {
+    currentQuestionIndex++;
+    nextButton.style.display = "none";
+    guessInput.disabled = false;
+    guessButton.style.display = "inline-block";
+    loadQuestion(currentQuestionIndex);
+  } else {
+    // Si es la última, llamamos a endGame
+    endGame();
+  }
+});
+
+/* ============================================================
+   7) FIN DEL JUEGO - MOSTRAR APARTADO FINAL
+   ============================================================ */
+function endGame() {
+  // Ocultamos el contenedor del juego
+  gameContainer.style.display = "none";
+
+  // Mostramos el "apartado" final
+  finalScreen.style.display = "block";
+
+  // Construimos un mensaje con el resultado final
+  let html = `
+    <h2>¡Juego Terminado!</h2>
+    <p>Puntaje final de Equipo 1: ${scoreTeam1}</p>
+    <p>Puntaje final de Equipo 2: ${scoreTeam2}</p>
+  `;
+  if (scoreTeam1 > scoreTeam2) {
+    html += `
+      <h3>¡Felicidades, Equipo 1!</h3>
+      <p>Ustedes ganaron con ${scoreTeam1} puntos.</p>
+    `;
+  } else if (scoreTeam2 > scoreTeam1) {
+    html += `
+      <h3>¡Felicidades, Equipo 2!</h3>
+      <p>Ustedes ganaron con ${scoreTeam2} puntos.</p>
+    `;
+  } else {
+    html += `<h3>¡Es un empate!</h3>`;
+  }
+
+  finalScreen.innerHTML = html;
+}
+</script>
+</body>
+</html>
+
